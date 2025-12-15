@@ -1,0 +1,26 @@
+substitutions:
+  _FUNCTION_NAME: send_job_email
+  _REGION: us-central1
+  _RUNTIME: python314
+  _ENTRY_POINT: main
+  _TRIGGER_TOPIC: job-notifications
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      [
+        "functions",
+        "deploy",
+        "${_FUNCTION_NAME}",
+        "--gen2",
+        "--region=${_REGION}",
+        "--runtime=${_RUNTIME}",
+        "--trigger-topic=${_TRIGGER_TOPIC}",
+        "--entry-point=${_ENTRY_POINT}",
+        "--source=.",
+        "--set-env-vars=ENV=prod",
+      ]
