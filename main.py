@@ -70,9 +70,9 @@ def send_email(msg: EmailMessage) -> None:
     email_password = getenv("EMAIL_PASSWORD")
     
     logging.info(f"Send email to {msg.get('To')} from {SMTP_HOST}:{SMTP_PORT}....")
-    if not email_from or not email_password:
-        logging.error("EMAIL_FROM or EMAIL_PASSWORD not defined in environment variables.")
-        raise RuntimeError("EMAIL_FROM or EMAIL_PASSWORD not defined in environment variables.")
+    if not email_from or not email_password or not msg.get('To'):
+        logging.error("EMAIL_FROM or EMAIL_PASSWORD or EMAIL_TO not defined in environment variables.")
+        raise RuntimeError("EMAIL_FROM or EMAIL_PASSWORD or EMAIL_TO not defined in environment variables.")
 
     logging.info("Connecting to SMTP server...")
     logging.debug(f"Message content: {msg.get_content()}")
