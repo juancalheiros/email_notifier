@@ -1,5 +1,6 @@
 substitutions:
   _FUNCTION_NAME: send_job_email
+  _FUNCTION_NAME_2: send_job_email_marketing
   _REGION: us-central1
   _RUNTIME: python314
   _ENTRY_POINT: main
