@@ -24,3 +24,19 @@ steps:
         "--source=.",
         "--set-env-vars=ENV=prod",
       ]
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      [
+        "functions",
+        "deploy",
+        "send_job_email_marketing",
+        "--gen2",
+        "--region=${_REGION}",
+        "--runtime=${_RUNTIME}",
+        "--trigger-topic=${_TRIGGER_TOPIC}",
+        "--entry-point=${_ENTRY_POINT}",
+        "--source=.",
+        "--set-env-vars=ENV=prod",
+      ]
