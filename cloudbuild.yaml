@@ -1,6 +1,5 @@
 substitutions:
   _FUNCTION_NAME: send_job_email
-  _FUNCTION_NAME_2: send_job_email_marketing
   _REGION: us-central1
   _RUNTIME: python314
   _ENTRY_POINT: main
@@ -26,24 +25,4 @@ steps:
         "--set-env-vars=ENV=prod",
         "--set-secrets=EMAIL_PASSWORD=SMTP_APP_PASSWORD:latest",
         "--set-secrets=EMAIL_FROM=SEND_EMAIL_FROM:latest",
-        "--set-secrets=EMAIL_TO=SEND_EMAIL_TO_MAIN:latest",
-      ]
-
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      [
-        "functions",
-        "deploy",
-        "send_job_email_marketing",
-        "--gen2",
-        "--region=${_REGION}",
-        "--runtime=${_RUNTIME}",
-        "--trigger-topic=${_TRIGGER_TOPIC}",
-        "--entry-point=${_ENTRY_POINT}",
-        "--source=.",
-        "--set-env-vars=ENV=prod",
-        "--set-secrets=EMAIL_PASSWORD=SMTP_APP_PASSWORD:latest",
-        "--set-secrets=EMAIL_FROM=SEND_EMAIL_FROM:latest",
-        "--set-secrets=EMAIL_TO=SEND_EMAIL_TO_FRIEND:latest",
       ]

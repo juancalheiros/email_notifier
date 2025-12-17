@@ -5,7 +5,7 @@ from os import getenv
 from base64 import b64decode
 from email.message import EmailMessage
 from json import loads as json_loads
-from typing import Optional
+from typing import Optional, List, Dict
 
 
 logging.basicConfig(
@@ -20,72 +20,100 @@ def decode_pubsub_message(event: Optional[dict]) -> str:
     return b64decode(event["data"]).decode("utf-8")
 
 
-def format_job_text(job: dict) -> str:
+def format_job_text(job: Dict) -> str:
     title = job.get("job_title", "Sem título")
     company = job.get("company", "N/A")
     location = "Remoto" if job.get("job_is_remote") else job.get("job_location", "N/A")
 
-    apply_link = job.get("job_apply_link")
-    google_link = job.get("job_google_link")
+    apply_link = job.get("job_apply_link") or job.get("job_google_link")
+    description = job.get("description", "")[:300].strip()
 
-    description = job.get("description", "")[:250].strip()
+    return (
+        f"📌 {title}\n"
+        f"🏢 Empresa: {company}\n"
+        f"📍 Local: {location}\n\n"
+        f"📝 Resumo:\n{description}...\n\n"
+        f"🔗 Candidatar-se:\n{apply_link}\n"
+    )
 
-    return f"""
-        📌 {title}
-        🏢 Empresa: {company}
-        📍 Local: {location}
 
-        📝 Resumo:
-        {description}...
+def format_search_text(search: Dict) -> str:
+    keywords = search.get("keywords", "Busca")
+    jobs = search.get("jobs", [])
 
-        🔗 Candidatar-se:
-        {apply_link or google_link}
-    """
+    if not jobs:
+        return f"\n🔍 {keywords}\nNenhuma vaga encontrada.\n"
 
-def format_jobs_text(jobs: list[dict]) -> str:
-    return "\n\n" + "\n".join(f"{i+1}) {format_job_text(job)}" for i, job in enumerate(jobs))
+    jobs_text = "\n".join(
+        f"{i+1}) {format_job_text(job)}"
+        for i, job in enumerate(jobs)
+    )
 
-def build_email(message: str) -> EmailMessage:
+    return f"\n🔍 {keywords}\n\n{jobs_text}"
+
+
+def build_email(user: Dict) -> EmailMessage:
+    email_to = user.get("email")
+    searches = user.get("searches", [])
+
+    if not email_to:
+        raise ValueError("User without email")
+
+    body = "\n".join(format_search_text(search) for search in searches)
+
     msg = EmailMessage()
-    msg["Subject"] = "Job Processing Summary"
+    msg["Subject"] = "📬 Novas vagas encontradas"
     msg["From"] = getenv("EMAIL_FROM")
-    msg["To"] = getenv("EMAIL_TO")
+    msg["To"] = email_to
 
     msg.set_content(
         f"""
-        O job de busca de vagas foi executado com sucesso.
+            Olá!
 
-        {format_jobs_text(json_loads(message))}
+            Encontramos novas vagas com base nas suas buscas:
 
-        — Cloud Run Job bot
-        """
+            {body}
+
+            —
+            Job Search Bot 🚀
+            """
     )
     return msg
 
 
 def send_email(msg: EmailMessage) -> None:
     SMTP_HOST = getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT = getenv("SMTP_PORT", 465)
+    SMTP_PORT = int(getenv("SMTP_PORT", 465))
     email_from = getenv("EMAIL_FROM")
     email_password = getenv("EMAIL_PASSWORD")
-    
-    logging.info(f"Send email to {msg.get('To')} from {SMTP_HOST}:{SMTP_PORT}....")
-    if not email_from or not email_password or not msg.get('To'):
-        logging.error("EMAIL_FROM or EMAIL_PASSWORD or EMAIL_TO not defined in environment variables.")
-        raise RuntimeError("EMAIL_FROM or EMAIL_PASSWORD or EMAIL_TO not defined in environment variables.")
 
-    logging.info("Connecting to SMTP server...")
-    logging.debug(f"Message content: {msg.get_content()}")
+    if not email_from or not email_password:
+        raise RuntimeError("EMAIL_FROM ou EMAIL_PASSWORD não configurados")
+
+    logging.info(f"Enviando email para {msg['To']}")
+
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as smtp:
         smtp.login(email_from, email_password)
         smtp.send_message(msg)
-        
-        logging.info("Email sent successfully.")
+
+    logging.info("Email enviado com sucesso.")
+
 
 def main(event=None, context=None) -> None:
     message = decode_pubsub_message(event)
-    email = build_email(message)
-    send_email(email)
+    users: List[Dict] = json_loads(message)
+
+    if not users:
+        logging.warning("Payload vazio recebido.")
+        return
+
+    for user in users:
+        try:
+            email = build_email(user)
+            send_email(email)
+        except Exception as e:
+            logging.error(f"Erro ao processar usuário {user.get('email')}: {e}")
+
 
 if __name__ == "__main__":
     main()
